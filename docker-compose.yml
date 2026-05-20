@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  # Contenedor de la Base de Datos MySQL (Exigido por la rúbrica para persistencia IE3)
+  db:
+    image: mysql:8
+    container_name: proyecto-db
+    environment:
+      MYSQL_ROOT_PASSWORD: admin123
+      MYSQL_DATABASE: tu_base_datos
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql # <-- Aquí cumples con la persistencia inmutable
+    networks:
+      - red-proyecto
+
+  # Microservicio de Ventas
+  api_ventas:
+    build: ./back-Ventas_SpringBoot/Springboot-API-REST # <-- Corregido con ./
+    container_name: api_ventas
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - red-proyecto
+
+  # Microservicio de Despachos
+  api_despachos:
+    build: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO # <-- Corregido con ./
+    container_name: api_despachos
+    ports:
+      - "8081:8081"
+    depends_on:
+      - db
+    networks:
+      - red-proyecto
+
+# Declaración obligatoria del volumen
+volumes:
+  dbdata:
+
+networks:
+  red-proyecto:

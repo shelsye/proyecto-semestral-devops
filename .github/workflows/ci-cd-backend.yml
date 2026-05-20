@@ -1,0 +1,75 @@
+name: CI/CD Backend Pipeline
+
+on:
+  push:
+    branches: ["deploy"] # Se activa automáticamente al hacer push a la rama deploy
+
+env:
+  AWS_REGION: us-east-1
+  # REEMPLAZA aquí con el ID real de tu instancia EC2 cuando la crees en AWS
+  BACKEND_INSTANCE_ID: i-0123456789abcdef0
+  BACKEND_APP_DIR: /home/ec2-user/proyecto-backend
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar el código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # Aquí GitHub Actions simula lo que está haciendo tu PC ahora mismo: compilar
+      - name: Compilar con Maven (Ventas)
+        run: |
+          cd back-Ventas_SpringBoot/Springboot-API-REST
+          chmod +x mvnw
+          ./mvnw clean package -DskipTests
+
+      - name: Compilar con Maven (Despachos)
+        run: |
+          cd back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+          chmod +x mvnw
+          ./mvnw clean package -DskipTests
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar el código
+        uses: actions/checkout@v4
+
+      # Configuración segura de credenciales usando los Secrets de GitHub (Exigido por la pauta)
+      - name: Configurar AWS credentials
+        run: |
+          mkdir -p ~/.aws
+          cat > ~/.aws/credentials << EOF
+          [default]
+          aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_session_token=${{ secrets.AWS_SESSION_TOKEN }}
+          EOF
+          cat > ~/.aws/config << EOF
+          [default]
+          region=${AWS_REGION}
+          output=json
+          EOF
+
+      # Despliegue usando AWS Systems Manager (SSM) sin exponer llaves SSH públicas
+      - name: Desplegar en EC2 vía AWS SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids "${{ env.BACKEND_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Actualizando contenedores de Backend" \
+            --parameters '{"commands":[
+              "cd ${{ env.BACKEND_APP_DIR }}",
+              "docker compose down",
+              "docker compose up -d --build"
+            ]}' \
+            --query "Command.CommandId" \
+            --output text
