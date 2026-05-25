@@ -68,7 +68,4 @@ jobs:
             docker pull 758524821056.dkr.ecr.us-east-1.amazonaws.com/repo-proyecto-ep2:latest
             docker stop backend-app || true
             docker rm backend-app || true
-            docker run -d --name backend-app \
-              -p 8080:8080 \
-              -e DB_ENDPOINT="${{ secrets.DB_ENDPOINT }}" \
-              -e DB_PORT="${{ secrets.DB_PORT }}" \
+            docker run -d --name backend-app -p 8080:8080 -e DB_ENDPOINT="${{ secrets.DB_ENDPOINT }}" -e DB_PORT="${{ secrets.DB_PORT }}" -e DB
