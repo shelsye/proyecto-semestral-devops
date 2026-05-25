@@ -19,7 +19,6 @@ jobs:
           cache: maven
 
       - name: Construir con Maven
-        working-directory: ./proyecto-semestral-devops
         run: mvn clean package -DskipTests
 
       - name: Set up QEMU
@@ -43,7 +42,7 @@ jobs:
       - name: Construir y subir imagen a ECR
         uses: docker/build-push-action@v5
         with:
-          context: ./proyecto-semestral-devops
+          context: .
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/repo-proyecto-ep2:latest
           cache-from: type=gha
