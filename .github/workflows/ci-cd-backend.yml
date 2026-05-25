@@ -2,13 +2,7 @@ name: CI/CD Backend Pipeline
 
 on:
   push:
-    branches: ["deploy"] # Se activa automáticamente al hacer push a la rama deploy
-
-env:
-  AWS_REGION: us-east-1
-  # REEMPLAZA aquí con el ID real de tu instancia EC2 cuando la crees en AWS
-  BACKEND_INSTANCE_ID: i-0a2977784263cd65a
-  BACKEND_APP_DIR: /home/ec2-user/proyecto-backend
+    branches: [ "deploy" ]
 
 jobs:
   build-and-push:
@@ -17,59 +11,56 @@ jobs:
       - name: Comprobar el código
         uses: actions/checkout@v4
 
-      - name: Configurar Java 17
+      - name: Configurar Java JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '17'
+          distribution: 'temurin'
+          cache: maven
 
-      # Aquí GitHub Actions simula lo que está haciendo tu PC ahora mismo: compilar
-      - name: Compilar con Maven (Ventas)
-        run: |
-          cd back-Ventas_SpringBoot/Springboot-API-REST
-          chmod +x mvnw
-          ./mvnw clean package -DskipTests
+      - name: Construir con Maven
+        run: mvn clean package -DskipTests
 
-      - name: Compilar con Maven (Despachos)
-        run: |
-          cd back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
-          chmod +x mvnw
-          ./mvnw clean package -DskipTests
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Iniciar sesión en Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Construir y subir imagen a ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/repo-proyecto-ep2:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Comprobar el código
-        uses: actions/checkout@v4
-
-      # Configuración segura de credenciales usando los Secrets de GitHub (Exigido por la pauta)
-      - name: Configurar AWS credentials
-        run: |
-          mkdir -p ~/.aws
-          cat > ~/.aws/credentials << EOF
-          [default]
-          aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_session_token=${{ secrets.AWS_SESSION_TOKEN }}
-          EOF
-          cat > ~/.aws/config << EOF
-          [default]
-          region=${AWS_REGION}
-          output=json
-          EOF
-
-      # Despliegue usando AWS Systems Manager (SSM) sin exponer llaves SSH públicas
-      - name: Desplegar en EC2 vía AWS SSM
-        run: |
-          aws ssm send-command \
-            --instance-ids "${{ env.BACKEND_INSTANCE_ID }}" \
-            --document-name "AWS-RunShellScript" \
-            --comment "Actualizando contenedores de Backend" \
-            --parameters '{"commands":[
-              "cd ${{ env.BACKEND_APP_DIR }}",
-              "docker compose down",
-              "docker compose up -d --build"
-            ]}' \
-            --query "Command.CommandId" \
-            --output text
+      - name: Desplegar en EC2 vía SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AWS_INSTANCE_IP }}
+          username: ec2-user
+          key: ${{ secrets.AWS_PRIVATE_KEY }}
+          script: |
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_REGISTRY }}
+            docker pull ${{ secrets.AWS_ECR_REGISTRY }}/repo-proyecto-ep2:latest
+            docker stop backend-app || true
+            docker rm backend-app || true
+            docker run -d --name backend-app -p 8080:8080 ${{ secrets.AWS_ECR_REGISTRY }}/repo-proyecto-ep2:latest
