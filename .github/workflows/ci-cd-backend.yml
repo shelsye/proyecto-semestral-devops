@@ -19,7 +19,7 @@ jobs:
           cache: maven
 
       - name: Construir con Maven
-        working-directory: ./back-Despachos_SpringBoot
+        working-directory: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
         run: mvn clean package -DskipTests
 
       - name: Set up QEMU
@@ -43,7 +43,7 @@ jobs:
       - name: Construir y subir imagen a ECR
         uses: docker/build-push-action@v5
         with:
-          context: ./back-Despachos_SpringBoot
+          context: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/repo-proyecto-ep2:latest
           cache-from: type=gha
