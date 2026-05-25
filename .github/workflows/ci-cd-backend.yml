@@ -18,18 +18,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Buscar POM y Construir con Maven
-        run: |
-          POM_PATH=$(find . -name "pom.xml" | head -n 1)
-          if [ -z "$POM_PATH" ]; then
-            echo "ERROR: ¡No se encontró ningún archivo pom.xml en ningún lado!"
-            exit 1
-          fi
-          POM_DIR=$(dirname "$POM_PATH")
-          echo "Pom encontrado en: $POM_DIR"
-          echo "POM_DIR=$POM_DIR" >> $GITHUB_ENV
-          cd "$POM_DIR"
-          mvn clean package -DskipTests
+      - name: Construir con Maven
+        working-directory: "./back despacho y ventas"
+        run: mvn clean package -DskipTests
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -52,7 +43,7 @@ jobs:
       - name: Construir y subir imagen a ECR
         uses: docker/build-push-action@v5
         with:
-          context: ${{ env.POM_DIR }}
+          context: "./back despacho y ventas"
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/repo-proyecto-ep2:latest
           cache-from: type=gha
