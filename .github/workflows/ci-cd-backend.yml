@@ -7,7 +7,7 @@ on:
 env:
   AWS_REGION: us-east-1
   # REEMPLAZA aquí con el ID real de tu instancia EC2 cuando la crees en AWS
-  BACKEND_INSTANCE_ID: i-0123456789abcdef0
+  BACKEND_INSTANCE_ID: i-0a2977784263cd65a
   BACKEND_APP_DIR: /home/ec2-user/proyecto-backend
 
 jobs:
