@@ -37,6 +37,18 @@ services:
     networks:
       - red-proyecto
 
+  # Microservicio de Frontend
+  front_despacho:
+    build: ./front_despacho 
+    container_name: front_despacho
+    ports:
+      - "80:5173"
+    depends_on:
+      - api_ventas
+      - api_despachos
+    networks:
+      - red-proyecto
+      
 # Declaración obligatoria del volumen
 volumes:
   dbdata:
