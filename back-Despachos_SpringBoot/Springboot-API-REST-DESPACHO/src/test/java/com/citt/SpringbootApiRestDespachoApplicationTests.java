@@ -9,5 +9,4 @@ class SpringbootApiRestDespachoApplicationTests {
 	@Test
 	void contextLoads() {
 	}
-
 }
