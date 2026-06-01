@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
         info = @Info(
                 title = "API REST Despacho",
                 version = "1.0",
-                description = "API REST Demo para gestionar despachos de productos. Lanzamiento CITT Duoc UC Viña del Mar 2025"
+                description = "API REST para gestionar despachos de productos - Innovatech Chile"
         )
 )
 public class OpenApiConfig {

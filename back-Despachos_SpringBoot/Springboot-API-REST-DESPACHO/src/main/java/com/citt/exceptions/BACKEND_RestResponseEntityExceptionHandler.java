@@ -21,7 +21,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
 
     @ExceptionHandler(DespachoNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ResponseEntity<ErrorMessage> DespachoNotFoundException(DespachoNotFoundException exception){
+    public ResponseEntity<ErrorMessage> handleDespachoNotFoundException(DespachoNotFoundException exception) {
         Map<String, String> errors = new HashMap<>();
         errors.put("idDespacho", "ID de despacho no existe");
         ErrorMessage message = new ErrorMessage(HttpStatus.NOT_FOUND, exception.getMessage(), errors);
@@ -42,7 +42,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
             errors.put(fieldName, errorMessage);
         });
 
-        ErrorMessage errorMessage = new ErrorMessage(HttpStatus.BAD_REQUEST, "Error de validación", errors);
+        ErrorMessage errorMessage = new ErrorMessage(HttpStatus.BAD_REQUEST, "Error de validacion", errors);
         return new ResponseEntity<>(errorMessage, HttpStatus.BAD_REQUEST);
     }
 }

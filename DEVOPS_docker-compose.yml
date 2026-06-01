@@ -1,0 +1,81 @@
+version: "3.8"
+
+# =========================================================
+# docker-compose.yml - Proyecto EP2 Innovatech Chile
+# Orquesta todos los servicios del sistema de despachos
+# =========================================================
+
+services:
+
+  # -------------------------------------------------------
+  # BASE DE DATOS MySQL 8
+  # Persistencia garantizada mediante volumen Docker (IE3)
+  # -------------------------------------------------------
+  db:
+    image: mysql:8
+    container_name: proyecto-db
+    environment:
+      MYSQL_ROOT_PASSWORD: admin123
+      MYSQL_DATABASE: despacho_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql   # Persistencia de datos (IE3)
+    networks:
+      - red-proyecto
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------------------------------------
+  # MICROSERVICIO BACKEND - API Despachos (Spring Boot)
+  # Solo accesible desde la red interna, NO expuesto a internet
+  # -------------------------------------------------------
+  api_despachos:
+    build: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+    container_name: api_despachos
+    ports:
+      - "8080:8080"
+    environment:
+      DB_ENDPOINT: db
+      DB_PORT: 3306
+      DB_NAME: despacho_db
+      DB_USERNAME: root
+      DB_PASSWORD: admin123
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - red-proyecto
+
+  # -------------------------------------------------------
+  # MICROSERVICIO FRONTEND - React + Nginx
+  # Unico servicio accesible desde Internet (puerto 80)
+  # -------------------------------------------------------
+  front_despacho:
+    build: ./front_despacho
+    container_name: front_despacho
+    ports:
+      - "80:80"
+    depends_on:
+      - api_despachos
+    networks:
+      - red-proyecto
+
+# =========================================================
+# VOLUMENES - Persistencia de datos (cumple requisito IE3)
+# =========================================================
+volumes:
+  dbdata:
+    name: proyecto-dbdata
+
+# =========================================================
+# REDES - Red interna para comunicacion entre servicios
+# El frontend se comunica con el backend por nombre de servicio
+# =========================================================
+networks:
+  red-proyecto:
+    name: red-proyecto
+    driver: bridge

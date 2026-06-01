@@ -13,6 +13,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -23,10 +24,25 @@ public class DespachoController {
     @Autowired
     private DespachoService despachoService;
 
+    // =========================================================
+    // NUEVO: Health Check - permite verificar en vivo que el
+    // backend esta corriendo correctamente en EC2.
+    // Responde: GET /api/v1/despachos/health
+    // =========================================================
+    @Operation(summary = "Verificar estado del servicio de despachos")
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> healthCheck() {
+        return ResponseEntity.ok(Map.of(
+            "status", "UP",
+            "service", "despachos",
+            "version", "1.0"
+        ));
+    }
+
     @Operation(summary = "Crear un nuevo despacho")
     @PostMapping
     public ResponseEntity<Despacho> crearDespacho(
-            @RequestBody Despacho despacho){
+            @RequestBody Despacho despacho) {
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{idDespacho}")
@@ -61,7 +77,8 @@ public class DespachoController {
 
     @Operation(summary = "Eliminar un despacho por ID")
     @DeleteMapping("/{idDespacho}")
-    public ResponseEntity<Void> eliminarDespacho(@PathVariable Long idDespacho) throws DespachoNotFoundException {
+    public ResponseEntity<Void> eliminarDespacho(
+            @PathVariable Long idDespacho) throws DespachoNotFoundException {
         despachoService.deleteDespacho(idDespacho);
         return ResponseEntity.noContent().build();
     }

@@ -2,27 +2,36 @@ import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 import axios from "axios";
 
+// URL base del backend - usa variable de entorno o ruta relativa via proxy nginx
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+
 export const FormCierreDespacho = ({ despacho, onClose }) => {
   const { register, handleSubmit } = useForm();
 
   const onSubmit = async (data) => {
     console.log("onSubmit ejecutado");
+
     const jsonData = {
-      intento: data.intento,
-      despachado: data.despachado,
+      fechaDespacho: despacho.fechaDespacho,
+      patenteCamion: despacho.patenteCamion,
+      idCompra: despacho.idCompra,
+      direccionCompra: despacho.direccionCompra,
+      valorCompra: despacho.valorCompra,
+      intento: parseInt(data.intento),
+      despachado: data.despachado === "true",
     };
 
     console.log("Datos del formulario:", jsonData);
 
     try {
       await axios.put(
-        `http://192.168.320/api/v1/despachos/${despacho.idDespacho}`,
+        `${API_BASE}/v1/despachos/${despacho.idDespacho}`,
         jsonData,
         {
-          headers:{
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-      }
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
         }
       );
       Swal.fire({
@@ -33,6 +42,12 @@ export const FormCierreDespacho = ({ despacho, onClose }) => {
       });
     } catch (error) {
       console.error("Error en la solicitud:", error);
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo modificar el despacho. Intenta nuevamente.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
     }
     onClose();
   };
@@ -51,7 +66,6 @@ export const FormCierreDespacho = ({ despacho, onClose }) => {
           <input
             disabled={true}
             type="text"
-            placeholder="Ingresa fecha de despacho"
             className="border border-gray-300 rounded-lg block w-full p-1 text-slate-400"
             value={despacho.idDespacho}
           />
@@ -60,7 +74,6 @@ export const FormCierreDespacho = ({ despacho, onClose }) => {
           <label className="block font-bold mb-2">Fecha despacho</label>
           <input
             type="date"
-            placeholder="Elige patente de camión"
             className="border border-gray-300 rounded-lg block w-full text-slate-400 p-1"
             value={despacho.fechaDespacho}
             disabled={true}
@@ -80,19 +93,19 @@ export const FormCierreDespacho = ({ despacho, onClose }) => {
           <input
             type="number"
             defaultValue={despacho.intento}
-            className="border border-gray-300 rounded-lg block w-full  p-1"
+            className="border border-gray-300 rounded-lg block w-full p-1"
             {...register("intento", { required: true })}
           />
         </div>
         <div className="mb-5">
-          <label className="block font-bold mb-2">Despacho entregado</label>
+          <label className="block font-bold mb-2">Estado del despacho</label>
           <select
-            defaultValue={false}
-            className="border border-gray-300 rounded-lg block w-full  p-1"
+            defaultValue="false"
+            className="border border-gray-300 rounded-lg block w-full p-1"
             {...register("despachado", { required: true })}
           >
-            <option value={false}>Despacho abierto</option>
-            <option value={true}>Cerrar despacho</option>
+            <option value="false">Despacho abierto</option>
+            <option value="true">Cerrar despacho</option>
           </select>
         </div>
         <div className="mb-5">
@@ -122,7 +135,6 @@ export const FormCierreDespacho = ({ despacho, onClose }) => {
             value={despacho.valorCompra}
           />
         </div>
-
         <button
           className="py-6 px-14 rounded-lg bg-teal-600 text-white font-bold mb-14"
           type="submit"

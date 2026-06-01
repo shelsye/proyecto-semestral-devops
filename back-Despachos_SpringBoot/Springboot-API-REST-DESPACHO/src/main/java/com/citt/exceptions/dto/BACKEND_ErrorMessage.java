@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 
-
 @Data
 public class ErrorMessage {
     private HttpStatus status;

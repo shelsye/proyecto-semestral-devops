@@ -16,17 +16,23 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Despacho {
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long idDespacho;
-    //@NotNull(message = "Fecha de despacho es obligatoria")
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)  // Especifica el formato de fecha
+
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate fechaDespacho;
+
     private String patenteCamion;
+
     private int intento;
+
     private Long idCompra;
-    //@NotBlank(message = "La dirección es obligatoria")
+
     private String direccionCompra;
+
     private Long valorCompra;
+
     private boolean despachado = false;
 }

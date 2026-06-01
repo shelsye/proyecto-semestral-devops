@@ -9,6 +9,6 @@ public interface DespachoService {
     List<Despacho> findAllDespachos();
     Despacho saveDespacho(Despacho despacho);
     Despacho updateDespacho(Long idDespacho, Despacho despacho) throws DespachoNotFoundException;
-    void deleteDespacho(Long idDespacho) throws DespachoNotFoundException, DespachoNotFoundException;
+    void deleteDespacho(Long idDespacho) throws DespachoNotFoundException;
     Despacho findById(Long idDespacho) throws DespachoNotFoundException;
 }
