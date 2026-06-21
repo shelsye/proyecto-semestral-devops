@@ -4,12 +4,12 @@ import { FormDespacho } from "./FormDespacho";
 import axios from "axios";
 
 // ============================================================================
-// MODIFICACIÓN DE RUTA PARA EXAMEN EP3 (Duoc UC)
-// Reemplaza esta IP por la IP pública viva de tu "servicio-api-ventas" de AWS ECS
+// CONFIGURACIÓN DE ENDPOINT DE PRODUCCIÓN - EVALUACIÓN EP3 DUOC UC
+// Se inyecta la IP activa del contenedor task-api-ventas obtenida de AWS ECS
 // ============================================================================
-const API_BASE = "http://54.211.201.52:8080/api";
+const API_BASE = "http://3.220.144.137:8080/api";
 
-// Nota para tu defensa: La línea original era la siguiente (usa rutas relativas):
+// Línea original del proxy Nginx:
 // const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 // ============================================================================
 
