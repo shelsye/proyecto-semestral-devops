@@ -3,8 +3,15 @@ import { Modal } from "./Modal";
 import { FormDespacho } from "./FormDespacho";
 import axios from "axios";
 
-// URL base del backend - usa variable de entorno o ruta relativa via proxy nginx
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+// ============================================================================
+// MODIFICACIÓN DE RUTA PARA EXAMEN EP3 (Duoc UC)
+// Reemplaza esta IP por la IP pública viva de tu "servicio-api-ventas" de AWS ECS
+// ============================================================================
+const API_BASE = "http://54.211.201.52:8080/api";
+
+// Nota para tu defensa: La línea original era la siguiente (usa rutas relativas):
+// const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+// ============================================================================
 
 export const TableCompras = () => {
   const [ventas, setVentas] = useState([]);

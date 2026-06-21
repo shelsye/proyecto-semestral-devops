@@ -1,23 +1,14 @@
-name: CI/CD Backend Pipeline
+name: CI/CD Backend Pipeline (ECS Deploy)
 
-# =========================================================
-# DISPARADOR: solo se activa con push a la rama 'deploy'
-# Cumple el requisito del PDF de usar 'deploy' como trigger
-# =========================================================
 on:
   push:
     branches: [ "deploy" ]
 
 jobs:
-
-  # -------------------------------------------------------
-  # JOB 1: Compilar, construir imagen y subir a ECR
-  # -------------------------------------------------------
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-
-      - name: Comprobar el codigo fuente
+      - name: Comprobar el código
         uses: actions/checkout@v4
 
       - name: Configurar Java JDK 17
@@ -27,14 +18,14 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Construir con Maven (sin tests)
+      - name: Construir con Maven
         working-directory: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
         run: mvn clean package -DskipTests
 
-      - name: Configurar QEMU (soporte multi-arquitectura)
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Configurar Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Configurar credenciales AWS
@@ -45,63 +36,31 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      - name: Iniciar sesion en Amazon ECR
+      - name: Iniciar sesión en Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Construir y subir imagen Docker a ECR
+      - name: Construir y subir imagen a ECR
         uses: docker/build-push-action@v5
         with:
           context: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           push: true
-          tags: 758524821056.dkr.ecr.us-east-1.amazonaws.com/repo-proyecto-ep2:latest
+          tags: 640175238127.dkr.ecr.us-east-1.amazonaws.com/proyecto-api-despachos:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # -------------------------------------------------------
-  # JOB 2: Desplegar imagen en EC2 via SSH
-  # Depende de que build-and-push haya terminado con exito
-  # -------------------------------------------------------
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-
-      - name: Desplegar en EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Configurar credenciales AWS para Deploy
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.AWS_INSTANCE_IP }}
-          username: ec2-user
-          key: ${{ secrets.AWS_PRIVATE_KEY }}
-          script: |
-            # Configurar credenciales AWS en la instancia
-            export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-            export AWS_SESSION_TOKEN="${{ secrets.AWS_SESSION_TOKEN }}"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
 
-            # Autenticar Docker con ECR
-            aws ecr get-login-password --region us-east-1 | \
-              docker login --username AWS --password-stdin \
-              758524821056.dkr.ecr.us-east-1.amazonaws.com
-
-            # Descargar la nueva imagen desde ECR
-            docker pull 758524821056.dkr.ecr.us-east-1.amazonaws.com/repo-proyecto-ep2:latest
-
-            # Detener y eliminar el contenedor anterior si existe
-            docker stop backend-app || true
-            docker rm backend-app || true
-
-            # Levantar el nuevo contenedor con variables de entorno desde secrets
-            docker run -d \
-              --name backend-app \
-              -p 8080:8080 \
-              -e DB_ENDPOINT="${{ secrets.DB_ENDPOINT }}" \
-              -e DB_PORT="${{ secrets.DB_PORT }}" \
-              -e DB_USERNAME="${{ secrets.DB_USER }}" \
-              -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-              -e DB_NAME="${{ secrets.DB_NAME }}" \
-              758524821056.dkr.ecr.us-east-1.amazonaws.com/repo-proyecto-ep2:latest
-
-            # Verificar que el contenedor levanto correctamente
-            echo "Contenedor desplegado. Estado actual:"
-            docker ps | grep backend-app
+      - name: Actualizar Servicio en AWS ECS Fargate
+        run: |
+          aws ecs update-service --cluster cluster-innovatech --service servicio-api-despachos --force-new-deployment
