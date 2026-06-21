@@ -1,5 +1,4 @@
-name: CI/CD Frontend Pipeline (ECS Deploy)
-
+name: CI/CD Frontend Pipeline v2 (ECS Deploy)
 on:
   push:
     branches: [ "deploy" ]
