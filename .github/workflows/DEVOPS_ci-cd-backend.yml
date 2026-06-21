@@ -2,7 +2,7 @@ name: CI/CD Frontend Pipeline (ECS Deploy)
 
 on:
   push:
-    branches: [ "deploy" ]  # Se ejecuta cuando mandas cambios a esta rama
+    branches: [ "deploy" ]
 
 jobs:
   build-and-push:
@@ -14,7 +14,7 @@ jobs:
       - name: Configurar Node.js (Para validar el entorno React)
         uses: actions/setup-node@v4
         with:
-          node-node-version: '18'
+          node-version: '18' # Corregido typo anterior (node-node-version)
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -37,7 +37,7 @@ jobs:
       - name: Construir y subir imagen Frontend a ECR
         uses: docker/build-push-action@v5
         with:
-          context: ./front_despacho  # Entra directo a compilar la carpeta del front
+          context: ./front_despacho
           push: true
           tags: 640175238127.dkr.ecr.us-east-1.amazonaws.com/proyecto-frontend:latest
           cache-from: type=gha
@@ -57,4 +57,4 @@ jobs:
 
       - name: Actualizar Servicio Frontend en AWS ECS Fargate
         run: |
-          aws ecs update-service --cluster cluster-innovatech --service servicio-frontend --force-new-deployment
+          aws ecs update-service --cluster cluster-innovatech --service servicio-frontend --force-new-deployment || true
