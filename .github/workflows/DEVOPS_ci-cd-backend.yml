@@ -13,7 +13,7 @@ jobs:
       - name: Configurar Node.js (Para validar el entorno React)
         uses: actions/setup-node@v4
         with:
-          node-version: '18' # Corregido typo anterior (node-node-version)
+          node-version: '18'
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -36,9 +36,11 @@ jobs:
       - name: Construir y subir imagen Frontend a ECR
         uses: docker/build-push-action@v5
         with:
-          context: ./front_despacho
+          # OJO: Verifica si tu Dockerfile está en la raíz "." o dentro de ./front_despacho
+          context: .
           push: true
-          tags: 640175238127.dkr.ecr.us-east-1.amazonaws.com/proyecto-frontend:latest
+          # CORREGIDO: Se cambió el ID antiguo por tu cuenta real 957036988404
+          tags: 957036988404.dkr.ecr.us-east-1.amazonaws.com/proyecto-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
