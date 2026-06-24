@@ -36,10 +36,11 @@ jobs:
       - name: Construir y subir imagen Frontend a ECR
         uses: docker/build-push-action@v5
         with:
-          # OJO: Verifica si tu Dockerfile está en la raíz "." o dentro de ./front_despacho
-          context: .
+          # CORREGIDO: Apunta a la carpeta correcta donde está tu código y Dockerfile
+          context: ./front_despacho
+          file: ./front_despacho/Dockerfile
           push: true
-          # CORREGIDO: Se cambió el ID antiguo por tu cuenta real 957036988404
+          # CONFIGURADO: Tu cuenta real de AWS Academy
           tags: 957036988404.dkr.ecr.us-east-1.amazonaws.com/proyecto-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
