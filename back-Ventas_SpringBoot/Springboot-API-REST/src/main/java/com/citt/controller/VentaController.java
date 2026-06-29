@@ -13,6 +13,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -22,6 +23,21 @@ public class VentaController {
 
     @Autowired
     private VentaService ventaService;
+
+    // =========================================================
+    // Health Check - permite a Kubernetes verificar en vivo que
+    // el microservicio de ventas está operativo.
+    // Responde: GET /api/v1/ventas/health
+    // =========================================================
+    @Operation(summary = "Verificar estado del servicio de ventas")
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> healthCheck() {
+        return ResponseEntity.ok(Map.of(
+            "status", "UP",
+            "service", "ventas",
+            "version", "1.0"
+        ));
+    }
 
     @Operation(summary = "Crear una nueva venta", description = "Crea una nueva venta en el sistema")
     @PostMapping

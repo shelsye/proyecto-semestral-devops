@@ -1,80 +1,87 @@
 version: "3.8"
 
 # =========================================================
-# docker-compose.yml - Proyecto EP2 Innovatech Chile
-# Orquesta todos los servicios del sistema de despachos
+# docker-compose.yml - Ejecución LOCAL del sistema completo
+# (MySQL + Despachos + Ventas + Frontend con Nginx)
+#
+# Los nombres de los servicios coinciden con los Service de
+# Kubernetes (db, api-despachos, api-ventas) para que el MISMO
+# nginx.conf funcione igual en local y en el clúster EKS.
 # =========================================================
 
 services:
 
-  # -------------------------------------------------------
-  # BASE DE DATOS MySQL 8
-  # Persistencia garantizada mediante volumen Docker (IE3)
-  # -------------------------------------------------------
+  # ---------- Base de datos MySQL 8 ----------
   db:
-    image: mysql:8
+    image: mysql:8.0
     container_name: proyecto-db
     environment:
-      MYSQL_ROOT_PASSWORD: admin123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-admin123}
       MYSQL_DATABASE: despacho_db
     ports:
       - "3306:3306"
     volumes:
-      - dbdata:/var/lib/mysql   # Persistencia de datos (IE3)
+      - dbdata:/var/lib/mysql
     networks:
       - red-proyecto
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-admin123}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # -------------------------------------------------------
-  # MICROSERVICIO BACKEND - API Despachos (Spring Boot)
-  # Solo accesible desde la red interna, NO expuesto a internet
-  # -------------------------------------------------------
-  api_despachos:
+  # ---------- Microservicio Despachos (Spring Boot) ----------
+  api-despachos:
     build: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
-    container_name: api_despachos
-    ports:
-      - "8080:8080"
+    container_name: api-despachos
     environment:
       DB_ENDPOINT: db
       DB_PORT: 3306
       DB_NAME: despacho_db
       DB_USERNAME: root
-      DB_PASSWORD: admin123
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-admin123}
+    ports:
+      - "8080:8080"   # expuesto para depuración local / proxy de Vite
     depends_on:
       db:
         condition: service_healthy
     networks:
       - red-proyecto
 
-  # -------------------------------------------------------
-  # MICROSERVICIO FRONTEND - React + Nginx
-  # Unico servicio accesible desde Internet (puerto 80)
-  # -------------------------------------------------------
-  front_despacho:
-    build: ./front_despacho
-    container_name: front_despacho
+  # ---------- Microservicio Ventas (Spring Boot) ----------
+  api-ventas:
+    build: ./back-Ventas_SpringBoot/Springboot-API-REST
+    container_name: api-ventas
+    environment:
+      DB_ENDPOINT: db
+      DB_PORT: 3306
+      DB_NAME: ventas_db          # se autocrea (createDatabaseIfNotExist=true)
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-admin123}
     ports:
-      - "80:80"
+      - "8081:8080"   # expuesto para depuración local / proxy de Vite
     depends_on:
-      - api_despachos
+      db:
+        condition: service_healthy
     networks:
       - red-proyecto
 
-# =========================================================
-# VOLUMENES - Persistencia de datos (cumple requisito IE3)
-# =========================================================
+  # ---------- Frontend React + Nginx (único expuesto) ----------
+  frontend:
+    build: ./front_despacho
+    container_name: front-despacho
+    ports:
+      - "80:80"
+    depends_on:
+      - api-despachos
+      - api-ventas
+    networks:
+      - red-proyecto
+
 volumes:
   dbdata:
     name: proyecto-dbdata
 
-# =========================================================
-# REDES - Red interna para comunicacion entre servicios
-# El frontend se comunica con el backend por nombre de servicio
-# =========================================================
 networks:
   red-proyecto:
     name: red-proyecto

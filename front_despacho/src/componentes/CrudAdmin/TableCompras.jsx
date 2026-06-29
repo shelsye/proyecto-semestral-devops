@@ -3,15 +3,9 @@ import { Modal } from "./Modal";
 import { FormDespacho } from "./FormDespacho";
 import axios from "axios";
 
-// ============================================================================
-// CONFIGURACIÓN DE ENDPOINT DE PRODUCCIÓN - EVALUACIÓN EP3 DUOC UC
-// Se inyecta la IP activa del contenedor task-api-ventas obtenida de AWS ECS
-// ============================================================================
-const API_BASE = "http://3.220.144.137:8080/api";
-
-// Línea original del proxy Nginx:
-// const API_BASE = import.meta.env.VITE_API_BASE || "/api";
-// ============================================================================
+// URL base del backend - usa variable de entorno o ruta relativa vía proxy Nginx.
+// En Kubernetes resuelve a "/api" y Nginx la reenvía al microservicio de ventas.
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 export const TableCompras = () => {
   const [ventas, setVentas] = useState([]);
