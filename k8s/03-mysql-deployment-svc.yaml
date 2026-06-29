@@ -1,0 +1,71 @@
+# =====================================================================
+# MySQL 8 - Base de datos compartida por los microservicios
+# Service ClusterIP "db": solo accesible DENTRO del clúster.
+# La contraseña root se inyecta desde el Secret "db-credentials".
+#
+# NOTA sobre persistencia: el almacenamiento es efímero. Si el pod se
+# reinicia se pierden los datos (el esquema se recrea con Hibernate
+# ddl-auto=update). Para persistencia real, añade un PVC con la
+# StorageClass de EBS (gp2/gp3) -> ver sección "Persistencia" del README.
+# =====================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proyecto-db
+  namespace: innovatech
+  labels:
+    app: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: db
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: root-password
+        - name: MYSQL_DATABASE
+          value: "despacho_db"
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+        readinessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 45
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: innovatech
+spec:
+  selector:
+    app: db
+  ports:
+  - protocol: TCP
+    port: 3306
+    targetPort: 3306
+  type: ClusterIP

@@ -1,0 +1,82 @@
+# =====================================================================
+# Microservicio BACKEND - Despachos (Spring Boot)
+# Imagen desde Amazon ECR. Service ClusterIP "api-despachos" (interno).
+# El frontend lo alcanza por DNS interno a través del proxy de Nginx.
+# La contraseña de BD se toma del Secret (nunca en texto plano).
+# =====================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-despachos
+  namespace: innovatech
+  labels:
+    app: api-despachos
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-despachos
+  template:
+    metadata:
+      labels:
+        app: api-despachos
+    spec:
+      containers:
+      - name: backend
+        image: ${ECR_REGISTRY}/despachos-backend:${IMAGE_TAG}
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_ENDPOINT
+          value: "db"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_NAME
+          value: "despacho_db"
+        - name: DB_USERNAME
+          value: "root"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: root-password
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+        # Spring Boot tarda en arrancar: startupProbe da hasta ~150s
+        startupProbe:
+          httpGet:
+            path: /api/v1/despachos/health
+            port: 8080
+          failureThreshold: 30
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /api/v1/despachos/health
+            port: 8080
+          periodSeconds: 10
+          timeoutSeconds: 3
+        livenessProbe:
+          httpGet:
+            path: /api/v1/despachos/health
+            port: 8080
+          periodSeconds: 15
+          timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-despachos
+  namespace: innovatech
+spec:
+  selector:
+    app: api-despachos
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

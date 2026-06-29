@@ -1,0 +1,25 @@
+# =====================================================================
+# HPA - Autoscaling del backend de Despachos (IE3)
+# Escala de 2 a 5 réplicas según uso de CPU.
+# Umbral 60%: deja margen para picos sin escalar de forma prematura.
+# Requiere metrics-server instalado en el clúster.
+# =====================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-despachos-hpa
+  namespace: innovatech
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-despachos
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
