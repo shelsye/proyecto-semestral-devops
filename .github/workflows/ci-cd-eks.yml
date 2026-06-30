@@ -8,7 +8,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  EKS_CLUSTER_NAME: innovatech-eks
+  EKS_CLUSTER_NAME: eks-devops
 
 jobs:
   build-push-deploy:
@@ -74,13 +74,23 @@ jobs:
       - name: Configurar kubeconfig contra el clúster EKS
         run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
 
-      - name: Crear namespace y Secret de MySQL
+      - name: Crear namespace, Secret de MySQL e imagePullSecret de ECR
         run: |
           kubectl apply -f k8s/01-namespace.yaml
           kubectl create secret generic db-credentials \
             --namespace innovatech \
             --from-literal=root-password="${{ secrets.MYSQL_ROOT_PASSWORD }}" \
             --dry-run=client -o yaml | kubectl apply -f -
+          # imagePullSecret: el rol de los nodos no tiene permisos de ECR,
+          # por eso los pods pullean las imagenes con este token.
+          kubectl create secret docker-registry ecr-registry-key \
+            --namespace innovatech \
+            --docker-server=${{ steps.ecr.outputs.registry }} \
+            --docker-username=AWS \
+            --docker-password="$(aws ecr get-login-password --region $AWS_REGION)" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl patch serviceaccount default -n innovatech \
+            -p '{"imagePullSecrets":[{"name":"ecr-registry-key"}]}'
 
       - name: Aplicar manifests (sustituye registry y tag con envsubst)
         run: |

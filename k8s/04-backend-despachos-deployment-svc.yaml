@@ -13,6 +13,12 @@ metadata:
     app: api-despachos
 spec:
   replicas: 2
+  # Rolling update sin surge: reemplaza en el mismo nodo (no requiere nodo extra)
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: api-despachos
