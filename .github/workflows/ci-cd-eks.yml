@@ -1,0 +1,120 @@
+name: CI/CD - Build, Push a ECR y Deploy a EKS
+
+# Se dispara con cada push a main/master/deploy y también de forma manual.
+on:
+  push:
+    branches:
+      - main
+      - deploy
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: innovatech-eks
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      # AWS Academy entrega credenciales temporales (incluye session token).
+      # Recuerda actualizar los 3 secrets en cada sesión del laboratorio.
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Iniciar sesión en Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Definir registry y tag de imagen
+        run: |
+          echo "ECR_REGISTRY=${{ steps.ecr.outputs.registry }}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Asegurar repositorios en ECR
+        run: bash scripts/create-ecr.sh
+
+      # ---------- BUILD & PUSH de las 3 imágenes ----------
+      - name: Backend Despachos -> ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+          push: true
+          tags: ${{ env.ECR_REGISTRY }}/despachos-backend:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Backend Ventas -> ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: ./back-Ventas_SpringBoot/Springboot-API-REST
+          push: true
+          tags: ${{ env.ECR_REGISTRY }}/ventas-backend:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Frontend -> ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: ./front_despacho
+          push: true
+          tags: ${{ env.ECR_REGISTRY }}/frontend-despacho:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ---------- DEPLOY a EKS ----------
+      - name: Configurar kubeconfig contra el clúster EKS
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Crear namespace, Secret de MySQL e imagePullSecret de ECR
+        run: |
+          kubectl apply -f k8s/01-namespace.yaml
+          kubectl create secret generic db-credentials \
+            --namespace innovatech \
+            --from-literal=root-password="${{ secrets.MYSQL_ROOT_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          # imagePullSecret: el rol de los nodos no tiene permisos de ECR,
+          # por eso los pods pullean las imagenes con este token.
+          kubectl create secret docker-registry ecr-registry-key \
+            --namespace innovatech \
+            --docker-server=${{ steps.ecr.outputs.registry }} \
+            --docker-username=AWS \
+            --docker-password="$(aws ecr get-login-password --region $AWS_REGION)" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl patch serviceaccount default -n innovatech \
+            -p '{"imagePullSecrets":[{"name":"ecr-registry-key"}]}'
+
+      - name: Aplicar manifests (sustituye registry y tag con envsubst)
+        run: |
+          for f in k8s/03-mysql-deployment-svc.yaml \
+                   k8s/04-backend-despachos-deployment-svc.yaml \
+                   k8s/05-backend-ventas-deployment-svc.yaml \
+                   k8s/06-frontend-deployment-svc.yaml \
+                   k8s/07-backend-despachos-hpa.yaml \
+                   k8s/08-backend-ventas-hpa.yaml \
+                   k8s/09-frontend-hpa.yaml; do
+            echo "Aplicando $f"
+            envsubst '${ECR_REGISTRY} ${IMAGE_TAG}' < "$f" | kubectl apply -f -
+          done
+
+      - name: Esperar a que termine el despliegue (deploy)
+        run: |
+          kubectl -n innovatech rollout status deployment/api-despachos  --timeout=300s
+          kubectl -n innovatech rollout status deployment/api-ventas     --timeout=300s
+          kubectl -n innovatech rollout status deployment/front-despacho --timeout=180s
+
+      - name: Estado final y URL pública
+        run: |
+          kubectl -n innovatech get pods,svc,hpa
+          echo "URL del Frontend:"
+          kubectl -n innovatech get svc front-despacho \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'

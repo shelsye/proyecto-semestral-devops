@@ -1,0 +1,86 @@
+# =====================================================================
+# Microservicio BACKEND - Ventas (Spring Boot)
+# Imagen desde Amazon ECR. Service ClusterIP "api-ventas" (interno).
+# Usa su propia base de datos lógica "ventas_db" en el MISMO MySQL
+# (se autocrea gracias a createDatabaseIfNotExist=true).
+# =====================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-ventas
+  namespace: innovatech
+  labels:
+    app: api-ventas
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: api-ventas
+  template:
+    metadata:
+      labels:
+        app: api-ventas
+    spec:
+      containers:
+      - name: backend
+        image: ${ECR_REGISTRY}/ventas-backend:${IMAGE_TAG}
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_ENDPOINT
+          value: "db"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_NAME
+          value: "ventas_db"
+        - name: DB_USERNAME
+          value: "root"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: root-password
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+        startupProbe:
+          httpGet:
+            path: /api/v1/ventas/health
+            port: 8080
+          failureThreshold: 30
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /api/v1/ventas/health
+            port: 8080
+          periodSeconds: 10
+          timeoutSeconds: 3
+        livenessProbe:
+          httpGet:
+            path: /api/v1/ventas/health
+            port: 8080
+          periodSeconds: 15
+          timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-ventas
+  namespace: innovatech
+spec:
+  selector:
+    app: api-ventas
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

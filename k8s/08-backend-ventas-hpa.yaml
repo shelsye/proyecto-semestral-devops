@@ -1,0 +1,24 @@
+# =====================================================================
+# HPA - Autoscaling del backend de Ventas (IE3)
+# Escala de 2 a 5 réplicas según uso de CPU (umbral 60%).
+# Requiere metrics-server instalado en el clúster.
+# =====================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-ventas-hpa
+  namespace: innovatech
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-ventas
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60

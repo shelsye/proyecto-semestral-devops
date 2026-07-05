@@ -1,0 +1,29 @@
+# =====================================================================
+# Archivos que NO deben versionarse
+# =====================================================================
+
+# Variables de entorno y credenciales
+.env
+.env.local
+*.local.env
+
+# Kubeconfig / credenciales de clúster
+kubeconfig
+*.kubeconfig
+
+# Credenciales de AWS (NUNCA versionar) - evita el "~/.aws" creado por error
+~/
+**/.aws/
+
+# Node / frontend
+node_modules/
+front_despacho/node_modules/
+front_despacho/dist/
+
+# Maven / backends compilados
+**/target/
+
+# Archivos de sistema / IDE
+.DS_Store
+Thumbs.db
+*.iml
